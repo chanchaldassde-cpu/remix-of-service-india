@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Timer } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 
 interface WaveRequestTimerProps {
   duration: number; // Total duration in seconds
@@ -51,7 +50,13 @@ export function WaveRequestTimer({ duration, isActive, onTimeout }: WaveRequestT
         </div>
         <span className="text-lg font-bold text-primary">{timeLeft}s</span>
       </div>
-      <Progress value={progress} className="h-2" />
+      {/* Avoid Radix Progress here to prevent React Context consumer crashes in some builds */}
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-300"
+          style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+        />
+      </div>
       <p className="mt-2 text-xs text-muted-foreground text-center">
         Request will expire if no provider accepts
       </p>
