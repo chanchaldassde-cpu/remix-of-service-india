@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -122,13 +122,34 @@ interface ProviderMapProps {
  * Markers change color based on wave request status
  */
 export function ProviderMap({ userLocation, providers, isWaveActive }: ProviderMapProps) {
-  const mapRef = useRef<L.Map>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure component only renders on client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // All positions for bounds fitting
   const allPositions: [number, number][] = [
     [userLocation.latitude, userLocation.longitude],
     ...providers.map((p) => [p.latitude, p.longitude] as [number, number]),
   ];
+
+  // Show loading state until client-side hydration is complete
+  if (!isClient) {
+    return (
+      <div className="relative rounded-xl overflow-hidden border border-border">
+        <div 
+          className="bg-muted/50 flex items-center justify-center"
+          style={{ height: "250px", width: "100%" }}
+        >
+          <div className="text-center text-muted-foreground">
+            <div className="animate-pulse">Loading map...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative rounded-xl overflow-hidden border border-border">
@@ -176,10 +197,12 @@ export function ProviderMap({ userLocation, providers, isWaveActive }: ProviderM
             opacity: 0;
           }
         }
+        .leaflet-container {
+          font-family: inherit;
+        }
       `}</style>
 
       <MapContainer
-        ref={mapRef}
         center={[userLocation.latitude, userLocation.longitude]}
         zoom={13}
         style={{ height: "250px", width: "100%" }}
