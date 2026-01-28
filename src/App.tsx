@@ -20,6 +20,10 @@ import ProviderDashboard from "./pages/provider/ProviderDashboard";
 import ProviderBookings from "./pages/provider/ProviderBookings";
 import ProviderEarnings from "./pages/provider/ProviderEarnings";
 import ProviderProfile from "./pages/provider/ProviderProfile";
+import ProviderAvailability from "./pages/provider/ProviderAvailability";
+import ProviderServices from "./pages/provider/ProviderServices";
+import ProviderNotifications from "./pages/provider/ProviderNotifications";
+import ProviderSettings from "./pages/provider/ProviderSettings";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +55,10 @@ const App = () => (
             <Route path="/provider/bookings" element={<ProviderBookings />} />
             <Route path="/provider/earnings" element={<ProviderEarnings />} />
             <Route path="/provider/profile" element={<ProviderProfile />} />
+            <Route path="/provider/availability" element={<ProviderAvailability />} />
+            <Route path="/provider/services" element={<ProviderServices />} />
+            <Route path="/provider/notifications" element={<ProviderNotifications />} />
+            <Route path="/provider/settings" element={<ProviderSettings />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
