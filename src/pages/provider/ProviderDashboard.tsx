@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ProviderLayout } from "@/components/provider/ProviderLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { NavigationMapSheet } from "@/components/provider/NavigationMapSheet";
 
 // Mock data for provider dashboard
 const todayBookings = [
@@ -45,6 +47,14 @@ const stats = {
 };
 
 const ProviderDashboard = () => {
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<typeof todayBookings[0] | null>(null);
+
+  const handleNavigate = (booking: typeof todayBookings[0]) => {
+    setSelectedBooking(booking);
+    setNavigationOpen(true);
+  };
+
   return (
     <ProviderLayout>
       <div className="px-4 py-6 space-y-6">
@@ -167,7 +177,13 @@ const ProviderDashboard = () => {
                       </Button>
                     ) : (
                       <>
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleNavigate(booking)}
+                        >
+                          <MapPin className="h-4 w-4 mr-1" />
                           Navigate
                         </Button>
                         <Button size="sm" className="flex-1">
@@ -202,6 +218,13 @@ const ProviderDashboard = () => {
           </Link>
         </div>
       </div>
+
+      {/* Navigation Map Sheet */}
+      <NavigationMapSheet
+        open={navigationOpen}
+        onOpenChange={setNavigationOpen}
+        booking={selectedBooking}
+      />
     </ProviderLayout>
   );
 };
