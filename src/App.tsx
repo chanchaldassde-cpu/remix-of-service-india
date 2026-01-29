@@ -15,6 +15,13 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import AuthVerify from "./pages/AuthVerify";
 
+// Job-Based Services Pages
+import JobServicesCategory from "./pages/JobServicesCategory";
+import JobRoleSubTasks from "./pages/JobRoleSubTasks";
+import BookJobService from "./pages/BookJobService";
+import JobHirings from "./pages/JobHirings";
+import JobHiringAttendance from "./pages/JobHiringAttendance";
+
 // Provider Pages
 import ProviderDashboard from "./pages/provider/ProviderDashboard";
 import ProviderBookings from "./pages/provider/ProviderBookings";
@@ -49,6 +56,13 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/*" element={<Profile />} />
             <Route path="/notifications" element={<Notifications />} />
+            
+            {/* Job-Based Services Routes */}
+            <Route path="/services/job-services" element={<JobServicesCategory />} />
+            <Route path="/job-services/:roleId" element={<JobRoleSubTasks />} />
+            <Route path="/job-services/:roleId/book" element={<BookJobService />} />
+            <Route path="/job-hirings" element={<JobHirings />} />
+            <Route path="/job-hirings/:hiringId/attendance" element={<JobHiringAttendance />} />
             
             {/* Provider Routes */}
             <Route path="/provider" element={<ProviderDashboard />} />

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { serviceCategories } from "@/data/mockData";
+import { jobServiceCategory } from "@/data/jobMockData";
 import { 
   Zap, 
   Droplets, 
@@ -7,6 +8,7 @@ import {
   Hammer, 
   Paintbrush, 
   Sparkles,
+  Briefcase,
   LucideIcon
 } from "lucide-react";
 
@@ -17,7 +19,19 @@ const iconMap: Record<string, LucideIcon> = {
   Hammer,
   Paintbrush,
   Sparkles,
+  Briefcase,
 };
+
+// Combine regular categories with job-based services
+const allCategories = [
+  ...serviceCategories,
+  {
+    id: jobServiceCategory.id,
+    name: jobServiceCategory.name,
+    icon: jobServiceCategory.icon,
+    description: jobServiceCategory.description,
+  },
+];
 
 export function ServiceCategoryGrid() {
   return (
@@ -25,16 +39,19 @@ export function ServiceCategoryGrid() {
       <h2 className="mb-4 text-lg font-semibold">What do you need help with?</h2>
       
       <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
-        {serviceCategories.map((category) => {
+        {allCategories.map((category) => {
           const IconComponent = iconMap[category.icon] || Zap;
+          const isJobBased = category.id === "job-services";
           return (
             <Link
               key={category.id}
-              to={`/services/${category.id}`}
+              to={isJobBased ? "/services/job-services" : `/services/${category.id}`}
               className="group flex flex-col items-center gap-2 rounded-xl bg-card p-4 shadow-sm transition-all hover:shadow-md active:scale-95"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 transition-colors group-hover:bg-secondary/20">
-                <IconComponent className="h-6 w-6 text-secondary" />
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors group-hover:bg-secondary/20 ${
+                isJobBased ? "bg-primary/10 group-hover:bg-primary/20" : "bg-secondary/10"
+              }`}>
+                <IconComponent className={`h-6 w-6 ${isJobBased ? "text-primary" : "text-secondary"}`} />
               </div>
               <span className="text-center text-xs font-medium leading-tight">
                 {category.name}
