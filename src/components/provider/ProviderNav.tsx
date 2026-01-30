@@ -1,10 +1,11 @@
-import { Home, Calendar, Wallet, User } from "lucide-react";
+import { Home, Calendar, Wallet, User, Briefcase } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/provider", icon: Home, label: "Dashboard" },
+  { to: "/provider", icon: Home, label: "Home" },
   { to: "/provider/bookings", icon: Calendar, label: "Bookings" },
+  { to: "/provider/jobs", icon: Briefcase, label: "Jobs" },
   { to: "/provider/earnings", icon: Wallet, label: "Earnings" },
   { to: "/provider/profile", icon: User, label: "Profile" },
 ];

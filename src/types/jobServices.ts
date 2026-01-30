@@ -66,6 +66,9 @@ export interface JobHiring {
   // Timestamps
   createdAt: string;
   updatedAt: string;
+  // Provider view - customer info
+  customerName?: string;
+  customerPhone?: string;
 }
 
 export type JobHiringStatus = 
