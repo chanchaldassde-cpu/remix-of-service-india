@@ -31,6 +31,10 @@ import ProviderAvailability from "./pages/provider/ProviderAvailability";
 import ProviderServices from "./pages/provider/ProviderServices";
 import ProviderNotifications from "./pages/provider/ProviderNotifications";
 import ProviderSettings from "./pages/provider/ProviderSettings";
+import ProviderJobHirings from "./pages/provider/ProviderJobHirings";
+import ProviderJobAttendance from "./pages/provider/ProviderJobAttendance";
+import ProviderJobProfile from "./pages/provider/ProviderJobProfile";
+import ProviderJobEarnings from "./pages/provider/ProviderJobEarnings";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +77,12 @@ const App = () => (
             <Route path="/provider/services" element={<ProviderServices />} />
             <Route path="/provider/notifications" element={<ProviderNotifications />} />
             <Route path="/provider/settings" element={<ProviderSettings />} />
+            
+            {/* Provider Job-Based Services Routes */}
+            <Route path="/provider/jobs" element={<ProviderJobHirings />} />
+            <Route path="/provider/jobs/:hiringId/attendance" element={<ProviderJobAttendance />} />
+            <Route path="/provider/jobs/profile" element={<ProviderJobProfile />} />
+            <Route path="/provider/jobs/earnings" element={<ProviderJobEarnings />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
