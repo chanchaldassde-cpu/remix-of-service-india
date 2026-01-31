@@ -1,20 +1,22 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { BookingCard } from "@/components/ui/BookingCard";
-import { mockBookings } from "@/data/mockData";
+import { BookingCard } from "@/components/booking/BookingCardNew";
+import { mockBookings } from "@/data/bookingsData";
 import { cn } from "@/lib/utils";
-import { Calendar } from "lucide-react";
+import { Calendar, Briefcase } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 type TabType = "upcoming" | "completed";
 
-const Bookings = () => {
+const BookingsPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>("upcoming");
 
   const upcomingBookings = mockBookings.filter(
-    (b) => b.status !== "completed" && b.status !== "cancelled"
+    (b) => !["completed", "cancelled"].includes(b.status)
   );
   const completedBookings = mockBookings.filter(
-    (b) => b.status === "completed" || b.status === "cancelled"
+    (b) => ["completed", "cancelled"].includes(b.status)
   );
 
   const displayBookings = activeTab === "upcoming" ? upcomingBookings : completedBookings;
@@ -22,10 +24,18 @@ const Bookings = () => {
   return (
     <AppLayout>
       <div className="px-4 py-6">
-        <h1 className="text-xl font-bold">My Bookings</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold">My Bookings</h1>
+          <Link to="/job-hirings">
+            <Button variant="outline" size="sm">
+              <Briefcase className="h-4 w-4 mr-1" />
+              Staff Hirings
+            </Button>
+          </Link>
+        </div>
 
         {/* Tabs */}
-        <div className="mt-4 flex rounded-lg bg-muted p-1">
+        <div className="flex rounded-lg bg-muted p-1">
           <button
             onClick={() => setActiveTab("upcoming")}
             className={cn(
@@ -35,7 +45,7 @@ const Bookings = () => {
                 : "text-muted-foreground"
             )}
           >
-            Upcoming
+            Upcoming ({upcomingBookings.length})
           </button>
           <button
             onClick={() => setActiveTab("completed")}
@@ -46,7 +56,7 @@ const Bookings = () => {
                 : "text-muted-foreground"
             )}
           >
-            Completed
+            Completed ({completedBookings.length})
           </button>
         </div>
 
@@ -69,6 +79,9 @@ const Bookings = () => {
                 ? "Your upcoming bookings will appear here"
                 : "Your completed bookings will appear here"}
             </p>
+            <Link to="/" className="mt-4">
+              <Button>Book a Service</Button>
+            </Link>
           </div>
         )}
       </div>
@@ -76,4 +89,4 @@ const Bookings = () => {
   );
 };
 
-export default Bookings;
+export default BookingsPage;
