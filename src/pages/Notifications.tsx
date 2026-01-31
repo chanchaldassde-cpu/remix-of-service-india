@@ -1,69 +1,51 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Bell, CheckCircle, Clock, AlertTriangle, Wrench } from "lucide-react";
+import { Bell, CheckCircle, Clock, AlertTriangle, Star, Truck, XCircle, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { mockNotifications } from "@/data/bookingsData";
+import { NotificationType } from "@/types/services";
+import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
-interface Notification {
-  id: string;
-  type: "booking" | "reminder" | "completion" | "alert";
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "booking",
-    title: "Booking Confirmed",
-    message: "Your electrical service booking with Rajesh Kumar is confirmed for Jan 28 at 10:00 AM",
-    time: "2 hours ago",
-    read: false,
-  },
-  {
-    id: "2",
-    type: "reminder",
-    title: "Service Tomorrow",
-    message: "Reminder: AC service scheduled for tomorrow at 2:00 PM",
-    time: "5 hours ago",
-    read: false,
-  },
-  {
-    id: "3",
-    type: "completion",
-    title: "Service Completed",
-    message: "Mohammad Iqbal has marked your AC service as complete. Please confirm and pay the remaining amount.",
-    time: "1 day ago",
-    read: true,
-  },
-  {
-    id: "4",
-    type: "alert",
-    title: "Provider Running Late",
-    message: "Your service provider is running 10 minutes late. ₹5 penalty has been applied.",
-    time: "2 days ago",
-    read: true,
-  },
-];
-
-const getNotificationIcon = (type: Notification["type"]) => {
-  switch (type) {
-    case "booking":
-      return <CheckCircle className="h-5 w-5 text-green-500" />;
-    case "reminder":
-      return <Clock className="h-5 w-5 text-blue-500" />;
-    case "completion":
-      return <Wrench className="h-5 w-5 text-primary" />;
-    case "alert":
-      return <AlertTriangle className="h-5 w-5 text-orange-500" />;
-    default:
-      return <Bell className="h-5 w-5 text-muted-foreground" />;
-  }
+const iconMap: Record<NotificationType, React.ReactNode> = {
+  booking_accepted: <CheckCircle className="h-5 w-5 text-success" />,
+  provider_on_way: <Truck className="h-5 w-5 text-primary" />,
+  job_completed: <CheckCircle className="h-5 w-5 text-primary" />,
+  rating_reminder: <Star className="h-5 w-5 text-gold" />,
+  booking_cancelled: <XCircle className="h-5 w-5 text-destructive" />,
+  provider_late: <AlertTriangle className="h-5 w-5 text-gold-foreground" />,
+  payment_received: <CreditCard className="h-5 w-5 text-success" />,
 };
 
-export default function Notifications() {
-  const unreadCount = mockNotifications.filter((n) => !n.read).length;
+export default function NotificationsPage() {
+  const [notifications, setNotifications] = useState(mockNotifications);
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    toast.success("All notifications marked as read");
+  };
+
+  const handleMarkRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, read: true } : n)
+    );
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
 
   return (
     <AppLayout>
@@ -78,40 +60,52 @@ export default function Notifications() {
               </p>
             )}
           </div>
-          <Button variant="ghost" size="sm">
-            Mark all read
-          </Button>
+          {unreadCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleMarkAllRead}>
+              Mark all read
+            </Button>
+          )}
         </div>
 
         {/* Notifications List */}
         <div className="space-y-3">
-          {mockNotifications.map((notification) => (
-            <div
+          {notifications.map((notification) => (
+            <Link
               key={notification.id}
-              className={`flex gap-3 rounded-xl border p-4 transition-colors ${
-                !notification.read ? "border-primary/20 bg-primary/5" : "border-border bg-card"
-              }`}
+              to={notification.bookingId ? `/booking/${notification.bookingId}` : "#"}
+              onClick={() => handleMarkRead(notification.id)}
+              className={cn(
+                "flex gap-3 rounded-xl border p-4 transition-colors hover:bg-muted/30",
+                !notification.read 
+                  ? "border-primary/20 bg-primary/5" 
+                  : "border-border bg-card"
+              )}
             >
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-background">
-                {getNotificationIcon(notification.type)}
+                {iconMap[notification.type]}
               </div>
-              <div className="flex-1 space-y-1">
+              <div className="flex-1 space-y-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-medium">{notification.title}</p>
                   {!notification.read && (
-                    <Badge variant="default" className="h-5 px-1.5 text-xs">
+                    <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0">
                       New
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">{notification.message}</p>
-                <p className="text-xs text-muted-foreground">{notification.time}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {notification.message}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatTime(notification.createdAt)}
+                </p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 
-        {mockNotifications.length === 0 && (
+        {/* Empty State */}
+        {notifications.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
               <Bell className="h-8 w-8 text-muted-foreground" />

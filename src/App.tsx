@@ -4,21 +4,20 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+
+// Main Pages
 import Index from "./pages/Index";
-import Services from "./pages/Services";
-import ServiceCategory from "./pages/ServiceCategory";
-import BookService from "./pages/BookService";
+import CategorySelection from "./pages/CategorySelection";
+import BookServiceFlow from "./pages/BookServiceFlow";
 import Bookings from "./pages/Bookings";
-import Profile from "./pages/Profile";
+import BookingDetails from "./pages/BookingDetails";
 import Notifications from "./pages/Notifications";
-import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import AuthVerify from "./pages/AuthVerify";
+import NotFound from "./pages/NotFound";
 
-// Job-Based Services Pages
-import JobServicesCategory from "./pages/JobServicesCategory";
-import JobRoleSubTasks from "./pages/JobRoleSubTasks";
-import BookJobService from "./pages/BookJobService";
+// Job-Based Services (Staff Hirings) - keeping for staff management
 import JobHirings from "./pages/JobHirings";
 import JobHiringAttendance from "./pages/JobHiringAttendance";
 
@@ -52,21 +51,23 @@ const App = () => (
             
             {/* Customer Routes */}
             <Route path="/" element={<Index />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/services/:categoryId" element={<ServiceCategory />} />
-            <Route path="/book/:categoryId/:problemId" element={<BookService />} />
+            
+            {/* New Category-based booking flow */}
+            <Route path="/category/:mainCategory" element={<CategorySelection />} />
+            <Route path="/book-service" element={<BookServiceFlow />} />
+            
+            {/* Bookings */}
             <Route path="/bookings" element={<Bookings />} />
-            <Route path="/bookings/:bookingId" element={<Bookings />} />
+            <Route path="/booking/:bookingId" element={<BookingDetails />} />
+            
+            {/* Staff Hirings (Monthly/Daily workers) */}
+            <Route path="/job-hirings" element={<JobHirings />} />
+            <Route path="/job-hirings/:hiringId/attendance" element={<JobHiringAttendance />} />
+            
+            {/* Profile & Notifications */}
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/*" element={<Profile />} />
             <Route path="/notifications" element={<Notifications />} />
-            
-            {/* Job-Based Services Routes */}
-            <Route path="/services/job-services" element={<JobServicesCategory />} />
-            <Route path="/job-services/:roleId" element={<JobRoleSubTasks />} />
-            <Route path="/job-services/:roleId/book" element={<BookJobService />} />
-            <Route path="/job-hirings" element={<JobHirings />} />
-            <Route path="/job-hirings/:hiringId/attendance" element={<JobHiringAttendance />} />
             
             {/* Provider Routes */}
             <Route path="/provider" element={<ProviderDashboard />} />
@@ -84,7 +85,7 @@ const App = () => (
             <Route path="/provider/jobs/profile" element={<ProviderJobProfile />} />
             <Route path="/provider/jobs/earnings" element={<ProviderJobEarnings />} />
             
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

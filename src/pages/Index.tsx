@@ -1,6 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { HeroBanner } from "@/components/home/HeroBanner";
-import { ServiceCategoryGrid } from "@/components/home/ServiceCategoryGrid";
+import { MainCategoryCards } from "@/components/home/MainCategoryCards";
+import { SearchBar } from "@/components/home/SearchBar";
 import { QuickActions } from "@/components/home/QuickActions";
 import { PopularProblems } from "@/components/home/PopularProblems";
 
@@ -8,7 +9,8 @@ const Index = () => {
   return (
     <AppLayout>
       <HeroBanner />
-      <ServiceCategoryGrid />
+      <SearchBar />
+      <MainCategoryCards />
       <QuickActions />
       <PopularProblems />
     </AppLayout>
