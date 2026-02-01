@@ -1,19 +1,33 @@
 import { useState, useCallback, useRef } from "react";
-import { ServiceProvider } from "@/types";
 import { WaveStatus } from "@/components/booking/WaveRequestCard";
 
-// Provider with wave status
-export interface ProviderWithStatus extends ServiceProvider {
+// Base provider interface that works with both type definitions
+export interface BaseProvider {
+  id: string;
+  name: string;
+  rating: number;
+  reviewCount: number;
+  experience: string;
+  verified: boolean;
+  location: string;
+  latitude: number;
+  longitude: number;
+  completedJobs: number;
   distance?: number;
+}
+
+// Provider with wave status
+export interface ProviderWithStatus extends BaseProvider {
   waveStatus: WaveStatus;
+  [key: string]: unknown; // Allow additional properties
 }
 
 // Wave request state
 export type WaveRequestState = "idle" | "sending" | "waiting" | "accepted" | "timeout" | "cancelled";
 
-interface UseWaveRequestOptions {
-  providers: (ServiceProvider & { distance?: number })[];
-  onProviderAccepted: (provider: ServiceProvider) => void;
+interface UseWaveRequestOptions<T extends BaseProvider> {
+  providers: T[];
+  onProviderAccepted: (provider: T) => void;
   onTimeout: () => void;
   // Simulated response times (in ms) - for demo purposes
   minResponseTime?: number;
@@ -26,26 +40,26 @@ interface UseWaveRequestOptions {
  * Simulates real-time provider responses for frontend demo
  * In production, this would connect to WebSocket/Supabase Realtime
  */
-export function useWaveRequest({
+export function useWaveRequest<T extends BaseProvider>({
   providers,
   onProviderAccepted,
   onTimeout,
   minResponseTime = 2000,
   maxResponseTime = 8000,
   acceptChance = 0.4,
-}: UseWaveRequestOptions) {
+}: UseWaveRequestOptions<T>) {
   const [state, setState] = useState<WaveRequestState>("idle");
   const [providerStatuses, setProviderStatuses] = useState<Map<string, WaveStatus>>(
     new Map(providers.map((p) => [p.id, "idle"]))
   );
-  const [acceptedProvider, setAcceptedProvider] = useState<ServiceProvider | null>(null);
+  const [acceptedProvider, setAcceptedProvider] = useState<T | null>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const acceptedRef = useRef(false);
 
   // Get providers with their current status
-  const providersWithStatus: ProviderWithStatus[] = providers.map((p) => ({
+  const providersWithStatus = providers.map((p) => ({
     ...p,
-    waveStatus: providerStatuses.get(p.id) || "idle",
+    waveStatus: providerStatuses.get(p.id) || "idle" as WaveStatus,
   }));
 
   // Clear all pending timeouts

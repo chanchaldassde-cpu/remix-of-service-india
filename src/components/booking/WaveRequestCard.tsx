@@ -1,12 +1,25 @@
 import { Star, BadgeCheck, MapPin, Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
-import { ServiceProvider } from "@/types";
 import { cn } from "@/lib/utils";
 
 // Provider status during wave request
 export type WaveStatus = "idle" | "waiting" | "accepted" | "rejected";
 
+// Base provider interface for WaveRequestCard - works with all provider types
+interface BaseProviderProps {
+  id: string;
+  name: string;
+  rating: number;
+  reviewCount: number;
+  verified: boolean;
+  location: string;
+  distance?: number;
+  // Optional pricing fields - different provider types have different pricing
+  dailyRate?: number;
+  monthlyRate?: number;
+}
+
 interface WaveRequestCardProps {
-  provider: ServiceProvider & { distance?: number };
+  provider: BaseProviderProps;
   status: WaveStatus;
 }
 
@@ -65,10 +78,17 @@ export function WaveRequestCard({ provider, status }: WaveRequestCardProps) {
             )}
           </div>
 
-          {/* Fixed Price */}
-          <p className="mt-2 text-sm font-medium text-secondary">
-            ₹{provider.fixedPrice}
-          </p>
+          {/* Price - show daily rate if available */}
+          {provider.dailyRate && (
+            <p className="mt-2 text-sm font-medium text-secondary">
+              ₹{provider.dailyRate}/day
+            </p>
+          )}
+          {provider.monthlyRate && !provider.dailyRate && (
+            <p className="mt-2 text-sm font-medium text-secondary">
+              ₹{provider.monthlyRate}/month
+            </p>
+          )}
         </div>
 
         {/* Status Indicator */}
