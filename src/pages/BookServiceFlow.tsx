@@ -13,8 +13,13 @@ import {
   Shield, 
   CheckCircle,
   AlertCircle,
-  Radio,
-  Send
+  Send,
+  Loader2,
+  XCircle,
+  Key,
+  Copy,
+  Phone,
+  Navigation
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -22,12 +27,16 @@ import {
   getCategoryById, 
   getProblemsByCategory, 
   getProvidersByCategory,
-  getProviderPrice,
-  serviceProviders
 } from "@/data/categoriesData";
 import { ServiceProvider, HiringType } from "@/types/services";
+import { WaveRequestCard } from "@/components/booking/WaveRequestCard";
+import { WaveRequestTimer } from "@/components/booking/WaveRequestTimer";
+import { useWaveRequest } from "@/hooks/useWaveRequest";
 
-type BookingStep = "providers" | "schedule" | "confirm";
+// Flow: Schedule → Wave Request → Confirmation (with OTP)
+type BookingStep = "schedule" | "wave" | "confirm";
+
+const WAVE_TIMEOUT = 45; // seconds to wait for provider response
 
 // Mock user location
 const USER_LOCATION = { latitude: 12.9352, longitude: 77.6245 };
@@ -44,6 +53,11 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
+// Generate 4-digit OTP
+function generateOTP(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
 const timeSlots = [
   "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
   "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM",
@@ -57,12 +71,14 @@ const BookServiceFlow = () => {
   const problemIds = searchParams.get("problems")?.split(",") || [];
   const hiringType = (searchParams.get("hiringType") as HiringType) || "task";
 
-  const [step, setStep] = useState<BookingStep>("providers");
+  const [step, setStep] = useState<BookingStep>("schedule");
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [address, setAddress] = useState("123, 4th Cross, Koramangala, Bangalore - 560034");
   const [notes, setNotes] = useState("");
+  const [bookingOTP, setBookingOTP] = useState<string>("");
+  const [bookingId, setBookingId] = useState<string>("");
 
   const category = getCategoryById(categoryId);
   const problems = getProblemsByCategory(categoryId).filter(p => problemIds.includes(p.id));
@@ -78,7 +94,7 @@ const BookServiceFlow = () => {
   }, [categoryId]);
 
   // Calculate total price for selected provider
-  const calculateTotal = (provider: ServiceProvider) => {
+  const calculateTotal = useCallback((provider: ServiceProvider) => {
     if (hiringType === "monthly" && provider.monthlyRate) {
       return provider.monthlyRate;
     }
@@ -87,7 +103,7 @@ const BookServiceFlow = () => {
     }
     // Task-based: sum of individual prices
     return problemIds.reduce((sum, pid) => sum + (provider.taskPrices[pid] || 0), 0);
-  };
+  }, [hiringType, problemIds]);
 
   const totalPrice = selectedProvider ? calculateTotal(selectedProvider) : 0;
   const advanceAmount = Math.round(totalPrice * 0.37);
@@ -101,28 +117,76 @@ const BookServiceFlow = () => {
       value: date.toISOString().split("T")[0],
       day: date.toLocaleDateString("en-US", { weekday: "short" }),
       date: date.getDate(),
+      isToday: i === 0,
     };
   });
 
-  const handleProviderSelect = (provider: ServiceProvider) => {
-    setSelectedProvider(provider);
-    setStep("schedule");
+  // Wave request hook
+  const {
+    state: waveState,
+    providersWithStatus,
+    acceptedProvider,
+    sendWaveRequest,
+    handleTimeout: handleWaveTimeout,
+    cancelRequest,
+    reset: resetWave,
+    isWaiting,
+  } = useWaveRequest({
+    providers,
+    onProviderAccepted: (provider) => {
+      setSelectedProvider(provider as ServiceProvider);
+      // Generate OTP and booking ID
+      const otp = generateOTP();
+      const bId = `BK${Date.now().toString().slice(-8)}`;
+      setBookingOTP(otp);
+      setBookingId(bId);
+      
+      toast.success(`${provider.name} accepted your request!`, {
+        description: "Booking confirmed. Share OTP when provider arrives.",
+      });
+      
+      // Move to confirmation step
+      setTimeout(() => {
+        setStep("confirm");
+      }, 1500);
+    },
+    onTimeout: () => {
+      toast.error("No providers responded", {
+        description: "Please try again or select a different time.",
+      });
+    },
+  });
+
+  // After scheduling, send wave request
+  const handleScheduleConfirm = () => {
+    setStep("wave");
+    sendWaveRequest();
   };
 
   const handleBack = () => {
-    if (step === "providers") {
+    if (step === "schedule") {
       navigate(-1);
-    } else if (step === "schedule") {
-      setStep("providers");
-    } else {
+    } else if (step === "wave") {
+      cancelRequest();
+      resetWave();
       setStep("schedule");
+    } else if (step === "confirm") {
+      // Can't go back from confirmed booking
+      navigate("/bookings");
     }
   };
 
-  const handleSubmit = () => {
-    toast.success("Booking confirmed!", {
-      description: `₹${advanceAmount} advance paid. Service scheduled for ${new Date(selectedDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${selectedTime}`,
-    });
+  const handleRetryWave = () => {
+    resetWave();
+    sendWaveRequest();
+  };
+
+  const handleCopyOTP = () => {
+    navigator.clipboard.writeText(bookingOTP);
+    toast.success("OTP copied to clipboard");
+  };
+
+  const handleViewBooking = () => {
     navigate("/bookings");
   };
 
@@ -150,9 +214,9 @@ const BookServiceFlow = () => {
           <div>
             <h1 className="font-semibold">{category.name}</h1>
             <p className="text-xs text-muted-foreground">
-              {step === "providers" && "Select a provider"}
               {step === "schedule" && "Choose date & time"}
-              {step === "confirm" && "Review & confirm"}
+              {step === "wave" && "Finding available provider"}
+              {step === "confirm" && "Booking confirmed!"}
             </p>
           </div>
         </div>
@@ -160,12 +224,12 @@ const BookServiceFlow = () => {
 
       {/* Progress */}
       <div className="flex gap-1 px-4 py-3">
-        {["providers", "schedule", "confirm"].map((s, i) => (
+        {["schedule", "wave", "confirm"].map((s, i) => (
           <div
             key={s}
             className={cn(
               "h-1 flex-1 rounded-full transition-colors",
-              i <= ["providers", "schedule", "confirm"].indexOf(step) ? "bg-primary" : "bg-muted"
+              i <= ["schedule", "wave", "confirm"].indexOf(step) ? "bg-primary" : "bg-muted"
             )}
           />
         ))}
@@ -191,106 +255,9 @@ const BookServiceFlow = () => {
           </div>
         </div>
 
-        {/* Step 1: Provider Selection */}
-        {step === "providers" && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Available Providers</h2>
-              <span className="text-xs text-muted-foreground">
-                Sorted by distance
-              </span>
-            </div>
-            
-            {providers.map((provider) => (
-              <button
-                key={provider.id}
-                onClick={() => handleProviderSelect(provider)}
-                className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-md active:scale-[0.99]"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-lg font-semibold text-primary">
-                      {provider.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium truncate">{provider.name}</h3>
-                      {provider.verified && (
-                        <Shield className="h-4 w-4 text-success shrink-0" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-                      <span className="text-sm">{provider.rating}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({provider.reviewCount} reviews)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{provider.experience} exp</span>
-                      <span>•</span>
-                      <span>{provider.completedJobs} jobs</span>
-                      <span>•</span>
-                      <span>{provider.distance?.toFixed(1)} km</span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-bold text-primary">₹{calculateTotal(provider)}</p>
-                    {hiringType === "monthly" && (
-                      <p className="text-xs text-muted-foreground">/month</p>
-                    )}
-                    {hiringType === "daily" && (
-                      <p className="text-xs text-muted-foreground">/day</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Price breakdown for task-based */}
-                {hiringType === "task" && problems.length > 1 && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground mb-1">Price breakdown:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {problems.map((prob) => (
-                        <Badge key={prob.id} variant="outline" className="text-xs">
-                          {prob.name}: ₹{provider.taskPrices[prob.id] || prob.basePrice}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </button>
-            ))}
-
-            {providers.length === 0 && (
-              <div className="text-center py-12">
-                <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No providers available in your area</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 2: Schedule */}
-        {step === "schedule" && selectedProvider && (
+        {/* Step 1: Schedule Selection */}
+        {step === "schedule" && (
           <div className="space-y-6">
-            {/* Selected Provider */}
-            <div className="rounded-lg bg-muted/50 p-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="font-semibold text-primary">
-                    {selectedProvider.name.charAt(0)}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-medium">{selectedProvider.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    ★ {selectedProvider.rating} • {selectedProvider.experience}
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Date Selection */}
             <div>
               <div className="mb-3 flex items-center gap-2">
@@ -309,7 +276,7 @@ const BookServiceFlow = () => {
                         : "border-border bg-card"
                     )}
                   >
-                    <span className="text-xs">{d.day}</span>
+                    <span className="text-xs">{d.isToday ? "Today" : d.day}</span>
                     <span className="text-lg font-semibold">{d.date}</span>
                   </button>
                 ))}
@@ -362,9 +329,37 @@ const BookServiceFlow = () => {
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any specific instructions..."
+                placeholder="Any specific instructions for the provider..."
                 rows={2}
               />
+            </div>
+
+            {/* Nearby Providers Preview */}
+            <div>
+              <h3 className="font-medium mb-3">
+                {providers.length} providers available nearby
+              </h3>
+              <div className="flex -space-x-2 overflow-hidden">
+                {providers.slice(0, 5).map((provider, i) => (
+                  <div
+                    key={provider.id}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary/10"
+                    style={{ zIndex: 5 - i }}
+                  >
+                    <span className="text-sm font-medium text-primary">
+                      {provider.name.charAt(0)}
+                    </span>
+                  </div>
+                ))}
+                {providers.length > 5 && (
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-muted">
+                    <span className="text-xs font-medium">+{providers.length - 5}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Your request will be sent to all nearby providers. First to accept gets the job!
+              </p>
             </div>
 
             {/* Continue Button */}
@@ -372,29 +367,205 @@ const BookServiceFlow = () => {
               className="w-full" 
               size="lg"
               disabled={!selectedDate || !selectedTime || !address.trim()}
-              onClick={() => setStep("confirm")}
+              onClick={handleScheduleConfirm}
             >
-              Continue to Payment
+              <Send className="h-4 w-4 mr-2" />
+              Find Provider
             </Button>
           </div>
         )}
 
-        {/* Step 3: Confirmation */}
+        {/* Step 2: Wave Request - Finding provider */}
+        {step === "wave" && (
+          <div className="space-y-4">
+            {/* Booking Details Summary */}
+            <div className="rounded-lg bg-muted/50 p-3 mb-4">
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {new Date(selectedDate).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>{selectedTime}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Timer */}
+            <WaveRequestTimer
+              duration={WAVE_TIMEOUT}
+              isActive={isWaiting}
+              onTimeout={handleWaveTimeout}
+            />
+
+            {/* Status message */}
+            {waveState === "accepted" && acceptedProvider && (
+              <div className="rounded-xl bg-success/10 p-4 text-center">
+                <CheckCircle className="h-8 w-8 mx-auto text-success mb-2" />
+                <h3 className="font-semibold text-success">Provider Found!</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {acceptedProvider.name} accepted your request
+                </p>
+              </div>
+            )}
+
+            {waveState === "timeout" && (
+              <div className="rounded-xl bg-destructive/10 p-4 text-center">
+                <XCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
+                <h3 className="font-semibold text-destructive">No Response</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Providers are busy. Try again or choose a different time.
+                </p>
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" className="flex-1" onClick={handleBack}>
+                    Change Time
+                  </Button>
+                  <Button className="flex-1" onClick={handleRetryWave}>
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Provider status cards */}
+            {waveState !== "timeout" && (
+              <div className="space-y-3">
+                <h3 className="font-semibold">Provider Responses</h3>
+                {providersWithStatus.slice(0, 5).map((provider) => (
+                  <WaveRequestCard
+                    key={provider.id}
+                    provider={provider}
+                    status={provider.waveStatus}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Cancel button */}
+            {isWaiting && (
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleBack}
+              >
+                Cancel Request
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Confirmation with OTP */}
         {step === "confirm" && selectedProvider && (
           <div className="space-y-4">
-            {/* Booking Summary */}
-            <div className="rounded-xl bg-card p-4 shadow-sm">
-              <h3 className="font-semibold">Booking Summary</h3>
-              
-              <div className="mt-4 space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Professional</span>
-                  <span className="font-medium">{selectedProvider.name}</span>
+            {/* Success Banner */}
+            <div className="rounded-xl bg-success/10 p-6 text-center">
+              <CheckCircle className="h-12 w-12 mx-auto text-success mb-3" />
+              <h2 className="text-xl font-bold text-success">Booking Confirmed!</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Booking ID: {bookingId}
+              </p>
+            </div>
+
+            {/* OTP Card - Uber style */}
+            <div className="rounded-xl border-2 border-primary bg-primary/5 p-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Key className="h-5 w-5 text-primary" />
+                  <span className="font-medium text-primary">Start Work OTP</span>
                 </div>
+                <div className="flex items-center justify-center gap-4 my-4">
+                  {bookingOTP.split("").map((digit, i) => (
+                    <div
+                      key={i}
+                      className="h-14 w-14 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold"
+                    >
+                      {digit}
+                    </div>
+                  ))}
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCopyOTP}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy OTP
+                </Button>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Share this OTP only when provider arrives at your location
+                </p>
+              </div>
+            </div>
+
+            {/* Provider Card */}
+            <div className="rounded-xl bg-card p-4 shadow-sm">
+              <h3 className="font-semibold mb-3">Your Provider</h3>
+              <div className="flex items-start gap-3">
+                <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-xl font-semibold text-primary">
+                    {selectedProvider.name.charAt(0)}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium">{selectedProvider.name}</h3>
+                    {selectedProvider.verified && (
+                      <Shield className="h-4 w-4 text-success" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Star className="h-3.5 w-3.5 fill-gold text-gold" />
+                    <span className="text-sm">{selectedProvider.rating}</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({selectedProvider.reviewCount} reviews)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    <span>{selectedProvider.distance?.toFixed(1)} km away</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10"
+                    onClick={() => window.open("tel:+919876543210")}
+                  >
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10"
+                    onClick={() => toast.info("Opening navigation...")}
+                  >
+                    <Navigation className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Booking Details */}
+            <div className="rounded-xl bg-card p-4 shadow-sm">
+              <h3 className="font-semibold mb-3">Booking Details</h3>
+              <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Services</span>
                   <span className="font-medium text-right max-w-[60%]">
                     {problems.map(p => p.name).join(", ")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Date & Time</span>
+                  <span className="font-medium">
+                    {new Date(selectedDate).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      weekday: "short",
+                    })}, {selectedTime}
                   </span>
                 </div>
                 {hiringType !== "task" && (
@@ -405,21 +576,6 @@ const BookServiceFlow = () => {
                     </Badge>
                   </div>
                 )}
-                {hiringType === "monthly" && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Trial Period</span>
-                    <span className="font-medium text-success">First 7 days</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Date & Time</span>
-                  <span className="font-medium">
-                    {new Date(selectedDate).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}, {selectedTime}
-                  </span>
-                </div>
                 <div className="border-t border-border pt-3">
                   <p className="text-xs text-muted-foreground">Address</p>
                   <p className="text-sm">{address}</p>
@@ -466,17 +622,16 @@ const BookServiceFlow = () => {
                   <div>
                     <h4 className="font-medium text-gold-foreground">7-Day Trial Period</h4>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Cancel anytime in first 7 days. Only pay for days worked at daily rate (₹{selectedProvider.dailyRate || Math.round(totalPrice / 30)}/day).
+                      Cancel anytime in first 7 days. Only pay for days worked.
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Submit Button */}
-            <Button className="w-full" size="lg" onClick={handleSubmit}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Pay ₹{advanceAmount} & Confirm
+            {/* View Booking Button */}
+            <Button className="w-full" size="lg" onClick={handleViewBooking}>
+              View My Bookings
             </Button>
           </div>
         )}
